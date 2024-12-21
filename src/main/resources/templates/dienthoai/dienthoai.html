@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Quản Lý Điện Thoại</title>
+</head>
+<body>
+<h1>Quản Lý Điện Thoại</h1>
+
+<!-- Danh sách điện thoại -->
+<h2>Danh Sách Điện Thoại</h2>
+<table border="1">
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>Tên Điện Thoại</th>
+        <th>Thông Tin</th>
+        <th>Nhà Cung Cấp</th>
+        <th>Địa Chỉ</th>
+        <th>Giá</th>
+        <th>Thao Tác</th>
+    </tr>
+    </thead>
+    <tbody id="dienThoaiTable"></tbody>
+</table>
+
+<!-- Form thêm/cập nhật thông tin điện thoại -->
+<h2>Thêm/Cập Nhật Điện Thoại</h2>
+<form id="dienThoaiForm">
+    <input type="hidden" id="dienThoaiId" name="id">
+    <div>
+        <label for="tenDienThoai">Tên Điện Thoại:</label>
+        <input type="text" id="tenDienThoai" name="tenDienThoai" required>
+    </div>
+    <div>
+        <label for="thongTin">Thông Tin:</label>
+        <input type="text" id="thongTin" name="thongTin" required>
+    </div>
+    <div>
+        <label for="nhaCungCap">Nhà Cung Cấp:</label>
+        <input type="text" id="nhaCungCap" name="nhaCungCap" required>
+    </div>
+    <div>
+        <label for="diaChi">Địa Chỉ:</label>
+        <input type="text" id="diaChi" name="diaChi" required>
+    </div>
+    <div>
+        <label for="gia">Giá:</label>
+        <input type="number" id="gia" name="gia" required>
+    </div>
+    <button id="saveButton" type="submit">Lưu</button>
+</form>
+
+<!-- Đăng xuất -->
+<a th:href="@{/logout}">Đăng xuất</a>
+
+<script>
+    let userRole = '';
+
+    // Lấy vai trò của người dùng
+    async function fetchUserRole() {
+        const response = await fetch('/api/user/role');
+        userRole = await response.text();
+    }
+
+    // Hiển thị danh sách điện thoại
+    async function fetchDienThoais() {
+        const response = await fetch('/api/dienthoai');
+        const dienThoais = await response.json();
+        const tableBody = document.getElementById('dienThoaiTable');
+        tableBody.innerHTML = '';
+
+        dienThoais.forEach(dienThoai => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${dienThoai.id}</td>
+                <td>${dienThoai.tenDienThoai}</td>
+                <td>${dienThoai.thongTin}</td>
+                <td>${dienThoai.nhaCungCap}</td>
+                <td>${dienThoai.diaChi}</td>
+                <td>${dienThoai.gia}</td>
+                <td>
+                    <button ${userRole !== 'ROLE_ADMIN' ? 'disabled' : ''} onclick="editDienThoai(${dienThoai.id})">Cập Nhật</button>
+                    <button ${userRole !== 'ROLE_ADMIN' ? 'disabled' : ''} onclick="deleteDienThoai(${dienThoai.id})">Xóa</button>
+                </td>
+            `;
+            tableBody.appendChild(row);
+        });
+    }
+
+    // Thêm hoặc cập nhật điện thoại
+    document.getElementById('dienThoaiForm').addEventListener('submit', async function(event) {
+        event.preventDefault();
+        if (userRole !== 'ROLE_ADMIN') {
+            alert('Bạn không có quyền thực hiện thao tác này!');
+            return;
+        }
+
+        const id = document.getElementById('dienThoaiId').value;
+        const tenDienThoai = document.getElementById('tenDienThoai').value;
+        const thongTin = document.getElementById('thongTin').value;
+        const nhaCungCap = document.getElementById('nhaCungCap').value;
+        const diaChi = document.getElementById('diaChi').value;
+        const gia = document.getElementById('gia').value;
+
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `/api/dienthoai/${id}` : '/api/dienthoai';
+
+        await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tenDienThoai, thongTin, nhaCungCap, diaChi, gia })
+        });
+
+        document.getElementById('dienThoaiForm').reset();
+        fetchDienThoais();
+    });
+
+    // Chỉnh sửa thông tin điện thoại
+    async function editDienThoai(id) {
+        const response = await fetch(`/api/dienthoai/${id}`);
+        const dienThoai = await response.json();
+
+        document.getElementById('dienThoaiId').value = dienThoai.id;
+        document.getElementById('tenDienThoai').value = dienThoai.tenDienThoai;
+        document.getElementById('thongTin').value = dienThoai.thongTin;
+        document.getElementById('nhaCungCap').value = dienThoai.nhaCungCap;
+        document.getElementById('diaChi').value = dienThoai.diaChi;
+        document.getElementById('gia').value = dienThoai.gia;
+    }
+
+    // Xóa điện thoại
+    async function deleteDienThoai(id) {
+        await fetch(`/api/dienthoai/${id}`, { method: 'DELETE' });
+        fetchDienThoais();
+    }
+
+    // Lấy danh sách khi tải trang
+    document.addEventListener('DOMContentLoaded', async () => {
+        await fetchUserRole();
+        fetchDienThoais();
+        if (userRole !== 'ROLE_ADMIN') {
+            document.getElementById('saveButton').disabled = true;
+        }
+    });
+</script>
+</body>
+</html>
